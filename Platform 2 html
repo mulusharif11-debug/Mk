@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Swift Sweep Uganda — Cleaning Platform</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+    .section { margin-bottom: 40px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; }
+    input[type="text"], input[type="tel"], select { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 8px 12px; margin-right: 6px; border: none; border-radius: 4px; cursor: pointer; }
+    button.primary { background-color: #28a745; color: white; }
+    button.ghost { background-color: #f2f2f2; }
+    button.warn { background-color: #dc3545; color: white; }
+    a.button { display:inline-block; padding: 8px 12px; margin-right: 8px; border-radius: 4px; text-decoration: none; cursor: pointer; }
+    a.button.primary { background-color: #28a745; color: white; }
+    a.button.ghost { background-color: #f2f2f2; color: #111; }
+    a.button.whatsapp { background-color: #25D366; color: white; }
+    a.button.email { background-color: #0073e6; color: white; }
+    .contact { margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; vertical-align: middle; }
+    th { background-color: #f9f9f9; }
+    .sr-only { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+    @media (max-width:600px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      th { display: none; }
+      td { display: flex; justify-content: space-between; padding: 8px 6px; }
+      td > span.label { font-weight: bold; margin-right: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Swift Sweep Uganda — Cleaning Platform</h1>
+
+  <!-- Contact buttons added here -->
+  <div class="contact" aria-label="Contact Swift Sweep Uganda">
+    <!-- Use international format for tel and WhatsApp links -->
+    <a class="button primary" href="tel:+256742229836" aria-label="Call Swift Sweep Uganda at +256 742 229836">Call +256 742 229836</a>
+    <a class="button whatsapp" href="https://wa.me/256742229836" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp with +256 742 229836">WhatsApp +256 742 229836</a>
+    <a class="button email" href="mailto:swiftsweepug01@gmail.com" aria-label="Email Swift Sweep Uganda at swiftsweepug01@gmail.com">Email swiftsweepug01@gmail.com</a>
+  </div>
+
+  <div class="section" aria-labelledby="book-heading">
+    <h2 id="book-heading">Book a Cleaning Service</h2>
+    <form id="bookingForm" aria-describedby="form-desc">
+      <p id="form-desc" class="sr-only">Provide your full name, address, phone and choose a service then submit to add a booking.</p>
+
+      <label for="name">Full Name</label>
+      <input type="text" id="name" name="name" required autocomplete="name" />
+
+      <label for="address">Address</label>
+      <input type="text" id="address" name="address" required autocomplete="street-address" />
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" name="phone" required placeholder="+2567XXXXXXXX" maxlength="20" />
+
+      <label for="service">Service Type</label>
+      <select id="service" name="service" required>
+        <option value="Office Cleaning">Office Cleaning</option>
+        <option value="Home Detailing">Home Detailing</option>
+        <option value="Other Cleaning">Other Cleaning</option>
+      </select>
+
+      <input type="hidden" id="editingId" value="">
+      <button type="submit" class="primary" id="submitBtn">Submit Booking</button>
+      <button type="button" id="resetBtn" class="ghost">Reset</button>
+    </form>
+  </div>
+
+  <div class="section" aria-labelledby="dash-heading">
+    <h2 id="dash-heading">Management Dashboard</h2>
+    <table aria-describedby="dash-desc">
+      <caption id="dash-desc" class="sr-only">List of bookings with status and actions</caption>
+      <thead>
+        <tr>
+          <th scope="col">Customer Name</th>
+          <th scope="col">Service</th>
+          <th scope="col">Status</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="dashboardBody">
+        <tr>
+          <td colspan="4" style="text-align:center;">No bookings yet</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // Key for localStorage
+    const STORAGE_KEY = 'swift_sweep_bookings_v1';
+
+    // In-memory bookings array
+    let bookings = [];
+    let editingId = null;
+
+    // DOM elements
+    const bookingForm = document.getElementById('bookingForm');
+    const dashboardBody = document.getElementById('dashboardBody');
+    const submitBtn = document.getElementById('submitBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const editingIdInput = document.getElementById('editingId');
+
+    // Utility: generate simple unique id
+    function uid() {
+      return 'b_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+    }
+
+    // Load bookings from localStorage
+    function loadBookings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        bookings = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        console.error('Failed to parse bookings from storage', e);
+        bookings = [];
+      }
+    }
+
+    // Save bookings to localStorage
+    function saveBookings() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+    }
+
+    // Render dashboard rows
+    function renderDashboard() {
+      dashboardBody.innerHTML = '';
+      if (!bookings.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.style.textAlign = 'center';
+        td.textContent = 'No bookings yet';
+        tr.appendChild(td);
+        dashboardBody.appendChild(tr);
+        return;
+      }
+
+      bookings.forEach(b => {
+        const tr = document.createElement('tr');
+
+        const nameTd = document.createElement('td');
+        nameTd.textContent = b.name;
+        tr.appendChild(nameTd);
+
+        const serviceTd = document.createElement('td');
+        serviceTd.textContent = b.service;
+        tr.appendChild(serviceTd);
+
+        const statusTd = document.createElement('td');
+        statusTd.textContent = b.status || 'Pending';
+        tr.appendChild(statusTd);
+
+        const actionsTd = document.createElement('td');
+
+        const startBtn = document.createElement('button');
+        startBtn.className = 'ghost';
+        startBtn.type = 'button';
+        startBtn.dataset.action = 'start';
+        startBtn.dataset.id = b.id;
+        startBtn.textContent = 'Start';
+        startBtn.title = 'Mark as In Progress';
+        actionsTd.appendChild(startBtn);
+
+        const completeBtn = document.createElement('button');
+        completeBtn.className = 'primary';
+        completeBtn.type = 'button';
+        completeBtn.dataset.action = 'complete';
+        completeBtn.dataset.id = b.id;
+        completeBtn.textContent = 'Complete';
+        completeBtn.title = 'Mark as Completed';
+        actionsTd.appendChild(completeBtn);
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'ghost';
+        editBtn.type = 'button';
+        editBtn.dataset.action = 'edit';
+        editBtn.dataset.id = b.id;
+        editBtn.textContent = 'Edit';
+        editBtn.title = 'Edit booking';
+        actionsTd.appendChild(editBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'warn';
+        deleteBtn.type = 'button';
+        deleteBtn.dataset.action = 'delete';
+        deleteBtn.dataset.id = b.id;
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.title = 'Delete booking';
+        actionsTd.appendChild(deleteBtn);
+
+        tr.appendChild(actionsTd);
+        dashboardBody.appendChild(tr);
+      });
+    }
+
+    // Validate phone with simple pattern (international optional)
+    function validatePhone(phone) {
+      // Accepts digits, optional leading +, length 7-15 digits
+      const digits = phone.replace(/[^0-9]/g, '');
+      return digits.length >= 7 && digits.length <= 15;
+    }
+
+    // Add or update booking from the form
+    function handleSubmit(evt) {
+      evt.preventDefault();
+
+      const form = evt.target;
+      const name = form.name.value.trim();
+      const address = form.address.value.trim();
+      const phone = form.phone.value.trim();
+      const service = form.service.value;
+
+      if (!name || !address || !phone) {
+        alert('Please fill all required fields.');
+        return;
+      }
+      if (!validatePhone(phone)) {
+        alert('Please enter a valid phone number (7–15 digits).');
+        return;
+      }
+
+      const existingId = editingIdInput.value || null;
+
+      if (existingId) {
+        // Update
+        const idx = bookings.findIndex(x => x.id === existingId);
+        if (idx !== -1) {
+          bookings[idx] = { ...bookings[idx], name, address, phone, service };
+          saveBookings();
+          renderDashboard();
+          bookingForm.reset();
+          editingIdInput.value = '';
+          submitBtn.textContent = 'Submit Booking';
+          editingId = null;
+        } else {
+          alert('Could not find booking to update.');
+        }
+      } else {
+        // Create new
+        const newBooking = {
+          id: uid(),
+          name,
+          address,
+          phone,
+          service,
+          status: 'Pending',
+          createdAt: new Date().toISOString()
+        };
+        bookings.push(newBooking);
+        saveBookings();
+        renderDashboard();
+        bookingForm.reset();
+      }
+    }
+
+    // Delegated click handler for actions in the dashboard
+    function handleDashboardClick(evt) {
+      const btn = evt.target.closest('button');
+      if (!btn || !btn.dataset.action) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      const idx = bookings.findIndex(b => b.id === id);
+      if (idx === -1) return;
+
+      if (action === 'start') {
+        bookings[idx].status = 'In Progress';
+        saveBookings();
+        renderDashboard();
+      } else if (action === 'complete') {
+        bookings[idx].status = 'Completed';
+        saveBookings();
+        renderDashboard();
+      } else if (action === 'delete') {
+        if (!confirm('Delete this booking? This cannot be undone.')) return;
+        bookings.splice(idx, 1);
+        saveBookings();
+        renderDashboard();
+      } else if (action === 'edit') {
+        // Populate form for editing
+        const b = bookings[idx];
+        document.getElementById('name').value = b.name;
+        document.getElementById('address').value = b.address;
+        document.getElementById('phone').value = b.phone;
+        document.getElementById('service').value = b.service;
+        editingIdInput.value = b.id;
+        submitBtn.textContent = 'Save Changes';
+        // Scroll to form for better UX
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    // Reset form action (cancel edit)
+    function handleReset() {
+      bookingForm.reset();
+      editingIdInput.value = '';
+      submitBtn.textContent = 'Submit Booking';
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      loadBookings();
+      renderDashboard();
+
+      bookingForm.addEventListener('submit', handleSubmit);
+      dashboardBody.addEventListener('click', handleDashboardClick);
+      resetBtn.addEventListener('click', handleReset);
+    });
+  </script>
+</body>
+</html>
